@@ -20,13 +20,64 @@ class Car:
     """
 
     def __init__(self):
+        self.battery = 100
+        self.mode = 2
+
         self.broker_addr = 'broker.emqx.io'
         self.broker_port = 4000
-        self.mqtt_topic = "python/mqtt"
+        self.nearby_power_stations_topic = "python/mqtt"
         self.client_id = f'car-mqtt-{randint(0, 1000)}'
 
         self.tcp_host = '127.0.0.1'
         self.tcp_port = 50000
+
+    def setModes(self, mode):
+        """
+        Altera o modo de uso, que define a autonomia do carro
+
+            Argumentos:
+                mode (str): modo de uso do carro
+        """
+        if (mode == "eco"):
+            self.mode = 1
+        elif (mode == "standard"):
+            self.mode = 2
+        elif (mode == "sport"):
+            self.mode = 3
+
+    def decreaseBattery(self):
+        """
+        Decrementa a bateria de acordo com o modo de uso do carro
+
+        """
+        while True:
+            if self.battery != 0:
+                self.battery -= self.mode*2
+                sleep(2)
+                print("Bateria: ", self.battery)
+    
+    def batteryAlert(self, client):
+        """
+        Emite um alerta de recarga para os postos próximos
+
+            Argumentos:
+                client (): client MQTT
+        """
+        message = str("O carro " + self.client_id + " precisa de recarga.")
+        while True:
+            if (self.battery <= 30):
+                self.publish(client, self.nearby_power_stations_topic, message)
+
+    def recharge(self):
+        """
+        Recarrega a bateria do carro
+        """
+        while(True):
+            if self.battery != 100:
+                self.battery += 1
+                sleep(1)
+            else:
+                print("Bateria completamente carregada")
 
     def on_connect(self, client, userdata, flags, rc):
         """
@@ -51,9 +102,8 @@ class Car:
         """
         # Define id do cliente conectado
         client = mqtt_client.Client()
-        client.username_pw_set(self.username, self.password)
         client.on_connect = self.on_connect
-        client.connect(self.broker, self.port)
+        client.connect(self.broker_addr, self.broker_port)
         return client
 
     def on_message(self, client, userdata, message):
@@ -126,118 +176,23 @@ class Car:
         """
         while True:
             try:
-                mensagem = client.recv(self.BUFFER_SIZE)
-                dados = self.obterDadosMensagem(mensagem.decode('utf-8'))
-                print("Mensagem recebida:", mensagem)
+                message = client.recv(self.BUFFER_SIZE)
+                data = self.getMessageData(message.decode('utf-8'))
+                print("Mensagem recebida:", message)
                 
-                if (dados["method"] == "GET"):
-                    pass
-
-                elif (dados["method"] == "POST"):
-                    if (dados["url_content"] == "/validacao-usuario"):
-                        username = dados["body_content"]["username"]
-                        matricula = dados["body_content"]["matricula"]
+                if (data["method"] == "GET"):
+                    if (data["url_content"] == "/nivel-bateria"):
+                        username = data["body_content"]["current_localization"]
                         
-                        # Consulta se o cliente está registrado na base de dados
-                        dao_inst = DAO()
-                        validacao_client = dao_inst.getClient(username, matricula)
+                        response = self.assembleResponse("200", "OK", json.dumps("Nível da bateria: " + self.battery + "%"))
+                        self.sendMessage(client, response)
 
-                        if (validacao_client == True):
-                            request = self.montarResponse("200", "OK", json.dumps("Usuário cadastrado"))
-                            self.enviarMensagem(client, request)
-
-                        elif (validacao_client == False):
-                            request = self.montarResponse("404", "Not Found", json.dumps("Usuário não cadastrado"))
-                            self.enviarMensagem(client, request)
-                            self.detelarClient(client)
+                elif (data["method"] == "POST"):
+                    if (data["url_content"] == "/alterar-localizacao"):
+                        current_localization = data["body_content"]["current_localization"]
                     
-                    elif (dados["url_content"] == "/medicoes/ultima-medicao"):
-                        matricula = dados["body_content"]["matricula"]
-
-                        # Consulta a última medição associada a determinado número de matrícula
-                        dao_inst = DAO()
-                        ultima_medicao = dao_inst.getUltimaMedicao(matricula)
-
-                        if (ultima_medicao != (0, 0)):
-                            # Retorna a data, a hora e o consumo registrado na última medição
-                            data_hora = ultima_medicao[0]
-                            consumo = ultima_medicao[1]
-                            dic_ultima_medicao = { "data_hora" : data_hora, "consumo" : consumo}
-                            
-                            request = self.montarResponse("200", "OK", json.dumps(dic_ultima_medicao))
-                            self.enviarMensagem(client, request)
-                        else:
-                            request = self.montarResponse("404", "Not Found", json.dumps(""))
-                            self.enviarMensagem(client, request)
-
-                    elif (dados["url_content"] == "/gerar-fatura"):
-                        matricula = dados["body_content"]["matricula"]
-
-                        # Consulta as 2 últimas medições associadas a determinado número de matrícula
-                        dao_inst = DAO()
-                        ultimas_2_medicoes = dao_inst.get2UltimasMedicoes(matricula)
-                        
-                        if (ultimas_2_medicoes[0] != ('0', '0') and ultimas_2_medicoes[1] != ('0', '0')):
-                            data, consumo_final= ultimas_2_medicoes[0]
-                            data, consumo_inicial = ultimas_2_medicoes[1]
-                            consumo_total = int(consumo_final) - int(consumo_inicial)
-                            
-                            # Multiplica o total de consumo do último período registrado
-                            # pelo valor da taxa de consumo
-                            valor_pagamento = consumo_total * self.TAXA_CONSUMO
-                            
-                            dic_fatura = { "consumo" : consumo_total , "valor_pagamento" : valor_pagamento}
-                            
-                            request = self.montarResponse("200", "OK", json.dumps(dic_fatura))
-                            self.enviarMensagem(client, request)
-                        else:
-                            request = self.montarResponse("404", "Not Found", json.dumps(""))
-                            self.enviarMensagem(client, request)
-
-                    elif (dados["url_content"] == "/alerta-consumo"):
-                        matricula = dados["body_content"]["matricula"]
-                        
-                        # Consulta as 5 últimas medições associadas a determinado número de matrícula
-                        dao_inst = DAO()
-                        ultimas_5_medicoes = dao_inst.get5UltimasMedicoes(matricula)
-                        
-                        if (ultimas_5_medicoes):
-                            lista_variacao_consumo = []
-                            
-                            i = 4
-                            while i > 0:
-                                data, consumo_final = ultimas_5_medicoes[i-1]
-                                data, consumo_inicial = ultimas_5_medicoes[i]
-                                consumo_total = int(consumo_final) - int(consumo_inicial)
-                                # Calcula e salva a variação de consumo dos último 4 períodos
-                                lista_variacao_consumo.append(consumo_total)
-                                i -= 1
-                            
-                            # Calcula a média de consumo dos últimos 3 períodos anteriores
-                            media = (lista_variacao_consumo[0] + 
-                                    lista_variacao_consumo[1] +
-                                    lista_variacao_consumo[2])/3
-                            
-                            # Caso o consumo do último período seja maior que a média
-                            # de consumo dos últimos 3 períodos vezes 1,5
-                            if (lista_variacao_consumo[3] >= (media*1.5)):
-                                # Calcula a diferença de consumo do último período em relação
-                                # à média de consumo dos últimos 3 períodos anteriores
-                                excesso_consumo = lista_variacao_consumo[3] - media
-                                dic_exc_consumo = { "excesso_consumo" : excesso_consumo }
-
-                                request = self.montarResponse("200", "OK", json.dumps(dic_exc_consumo))
-                                self.enviarMensagem(client, request)
-                            
-                            # Caso não seja identificado consumo excessivo em relação à
-                            # média dos períodos anteriores
-                            else:
-                                request = self.montarResponse("200", "OK", json.dumps("Sem consumo excessivo"))
-                                self.enviarMensagem(client, request)
-                        
-                        else:
-                            request = self.montarResponse("404", "Not Found", "")
-                            self.enviarMensagem(client, request)
+                    elif (data["url_content"] == "/entrar-no-posto"):
+                        id_power_station = data["body_content"]["id_power_station"]
 
                 elif (data["method"] == "PUT"):
                     pass
@@ -277,6 +232,51 @@ class Car:
             "body_content": body_content
     }
 
+    def sendMessage(self, client, message):
+        """
+        Envia mensagens para o usuário do carro através da conexão TCP
+
+            Parâmetros:
+                mensagem (str): mensagem a ser enviada ("response")
+                client (socket): cliente conectado
+            
+            Retornos:
+
+        """
+        try:
+            client.send(message.encode('utf-8'))
+        except:
+            pass
+    
+    def assembleResponse(self, status_code, status_message, body):
+        """
+        Monta a "response" a ser enviada
+
+            Parâmetros:
+                status_code (str): código de status da resposta HTTP do servidor
+                status_message (str): mensagem de status da resposta do servidor
+                body (str): corpo da mensagem de retorno
+            
+            Retornos:
+                response (str): resposta HTTP do servidor
+        """
+        http_version = "HTTP/1.1"
+        HOST = "127.0.0.1:50000"
+        user_agent = "server-conces-energia"
+        content_type = "text/html"
+        content_length = len(body)
+
+        response = "{0} {1} {2}\nHOST: {3}\nUser-Agent: {4}\nContent-Type: {5}\nContent-Length: {6}\n\n{7}" .format(http_version, 
+                                                                                                                    status_code, 
+                                                                                                                    status_message, 
+                                                                                                                    HOST, 
+                                                                                                                    user_agent, 
+                                                                                                                    content_type, 
+                                                                                                                    content_length,
+                                                                                                                    body)
+        
+        return response
+
     def main(self):
         # Conecta o clietne MQTT com algum broker
         client_mqtt = self.connect_mqtt()
@@ -293,7 +293,15 @@ class Car:
         except:
             return print("Não foi possível iniciar o sistema de informações")
 
-        self.publish(client_mqtt, self.topic1, "oi")
+        self.publish(client_mqtt, self.nearby_power_stations_topic, "oi")
+
+        # Decrementa a bateria do carro de acordo com o modo e uso
+        thread1 = threading.Thread(target=self.decreaseBattery)
+        thread1.start()
+
+        # Emite um alerta para os postos próximos caso o nível da bateria esteja baixo
+        thread2 = threading.Thread(target=self.batteryAlert(client_mqtt))
+        thread2.start()
 
 
 carro_inst = Car()

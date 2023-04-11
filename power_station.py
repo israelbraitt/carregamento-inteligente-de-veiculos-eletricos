@@ -80,7 +80,9 @@ class PowerStation:
                 userdata ():
                 message (str): mensagem recebida
         """
-        print(f"Mensagem `{message.payload.decode()}` recebido do tópico `{message.topic}`")
+        print(f"Mensagem " + {message.payload.decode("utf-8")} + " recebido do tópico " + {message.topic})
+        
+        return_message = self.messageTreatment(message.payload.decode("utf-8"))
 
     def subscribe(self, client: mqtt_client, topic):
         """
@@ -111,6 +113,10 @@ class PowerStation:
                 print(f"Enviando `{message}` para o tópico `{topic}`")
             else:
                 print(f"Falha ao enviar mensagem para o tópico {topic}")
+
+    def messageTreatment(self, payload):
+        if (payload == ""):
+            pass
 
     def main(self):
         client = self.connect_mqtt()
