@@ -23,6 +23,7 @@ class PowerStation:
         self.queue_update = "REDESP2IG/station/queue"
         self.car_entrance = "REDESP2IG/station/traffic"
         self.test_channel = "REDESP2IG/station/test"
+        self.str_format = 'utf-8'
 
         self.client_id = f'Station {randint(1, 100)}'
         self.location = f'District {randint(1, 20)}'
@@ -68,9 +69,10 @@ class PowerStation:
                 userdata ():
                 message (str): mensagem recebida
         """
-        print("Message received on topic "+message.topic+" with QoS "+str(message.qos)+" and payload "+str(message.payload))
+        decoded = message.payload.decode(self.str_format)
+        print("Message received on topic "+message.topic+" with QoS "+str(message.qos)+" and payload "+str(decoded))
 
-        message_dict = json.load(message.payload)
+        message_dict = json.loads(decoded)
         match message.topic:
             case "REDESP2IG/station/traffic":
                 self.updateVagas(client, message_dict)
@@ -128,6 +130,7 @@ class PowerStation:
 
         self.publish(client, self.test_channel, "oi")
         client.loop_forever()
+
 
 post_inst = PowerStation()
 post_inst.main()
