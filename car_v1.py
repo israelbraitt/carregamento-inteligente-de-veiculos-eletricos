@@ -25,7 +25,7 @@ class Car:
 
     def __init__(self):
         self.battery = 100
-        self.mode = randint(1, 4) # 1 = economico, 2 = regular, 3 = sport, 4 = recarregando
+        self.mode = randint(1, 3) # 1 = economico, 2 = regular, 3 = sport, 4 = recarregando
         self.location = "Bairro 1"
         self.str_format = 'utf-8'
         self.broker_addr = '127.0.0.1'
@@ -43,10 +43,11 @@ class Car:
         Decrementa a bateria de acordo com o modo de uso do carro
         """
         while True:
+            print("Bateria: " + str(self.battery))
             if self.mode > 3:
                 self.battery = min(100, self.battery + 5)
             else:
-                self.battery = max(0, self.battery - self.mode)
+                self.battery = max(0, self.battery - self.mode * 2)
                 if self.battery < 40:
                     p_id = "{\"car\": \"" + self.client_id + "\", "
                     p_location = "\"location\": \"" + self.location + "\", "
@@ -115,13 +116,14 @@ class Car:
         """
 
         while True:
-            sleep(1)
             result = client.publish(topic, message)
             # result: [0, 1]
             status = result[0]
             if status == 0:
                 print(f"Enviando `{message}` para o tópico `{topic}`")
+                break
             else:
+                sleep(1)
                 print(f"Falha ao enviar mensagem para o tópico {topic}")
 
     def conexaoTCP(self, socket_tcp):
