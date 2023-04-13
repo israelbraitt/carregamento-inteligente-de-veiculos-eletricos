@@ -67,7 +67,7 @@ class PowerStation:
         message_dict = json.load(message.payload)
         match message.topic:
             case "REDESP2IG/station/traffic":
-                self.updateVagas(message_dict)
+                self.updateVagas(client, message_dict)
 
         return_message = self.messageTreatment(message.payload.decode("utf-8"))
 
@@ -81,16 +81,19 @@ class PowerStation:
         client.subscribe(topic)
         client.on_message = self.on_message
 
-    def updateVagas(self, payload):
+    def updateVagas(self, client, payload):
         if payload.get("station") == self.client_id:
             if payload.get("operation") == "entrance":
                 self.vagas_disp = max(0, self.vagas_disp - 1)
+                self.publishVagas(client)
             elif payload.get("operation") == "exit":
                 self.vagas_disp = min(self.limite_vagas, self.vagas_disp + 1)
+                self.publishVagas(client)
 
-    def publishVagas(self):
-        publication = "\"station\": \"" + self.client_id + "\", \"queue\": \"" + str(self.vagas_disp) + "\"}"
-
+    def publishVagas(self, client):
+        publication = "{\"station\": \"" + self.client_id + "\", \"queue\": \"" + str(self.vagas_disp) + "\"}"
+        self.publish(client, self.queue_update, publication)
+            
     def publish(self, client, topic, message):
         """
         Publica mensagens nos tópicos do broker
