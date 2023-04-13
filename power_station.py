@@ -1,14 +1,14 @@
 from paho.mqtt import client as mqtt_client
 from random import randint
 from time import sleep
-
+import json
 
 class PowerStation:
     """
     Fornece funcionalidades de conexão e comunicação MQTT para divulgação
     das vagas de um posto de carregamento de carros elétricos
 
-        Argumentos:
+        Atributos:
             broker (str): endereço do broker
             port (int): porta de conexão do broker
             topic1 (str): tópico envio/recebimento de mensagens no broker
@@ -18,47 +18,33 @@ class PowerStation:
     """
 
     def __init__(self):
-        self.broker_addr = 'broker.emqx.io'
-        self.broker_port = 4000
-        self.mqtt_topic = "python/mqtt"
-        self.client_id = f'power-station-mqtt-{randint(0, 1000)}'
+        self.broker_addr = '127.0.0.1'
+        self.broker_port = 1915
+        self.queue_update = "REDESP2IG/station/queue"
+        self.car_entrance = "REDESP2IG/station/traffic"
+        self.test_channel = "REDESP2IG/station/test"
+        self.client_id = f'station-mqtt-{randint(0, 1000)}'
 
         self.limite_vagas = 25
         self.vagas_disp = 25
 
-    def addVagas(self, operacao):
-        """
-        Adiciona uma vaga da quantidade de vagas disponíveis
-
-            Parâmetros:
-                operacao (int): se for 1 incrementa a quantidade de vagas em 1 unidade,
-                                se for 2 decrementa a quantidade de vagas em 1 unidade
-        """
-        if (operacao == 1):
-            if (self.vagas_disp < self.limite_vagas):
-                self.vagas_disp += 1
-        elif (operacao == 2):
-            if (self.vagas_disp > 0):
-                self.vagas_disp -= 1
-            else:
-                print("O posto não possui mais vagas disponíveis")
-
-    def on_connect(self, client, userdata, flags, rc):
+    def on_connect(self, client: mqtt_client, userdata, flags, rc):
         """
         Retorna o status da conexão (callback) de acordo com a resposta do servidor
 
-            Argumentos:
-                client (): cliente MQTT
+            Parâmetros:
+                client (mqtt_client): cliente MQTT
                 userdata ():
                 flags ():
-                rc (): determina se o cliente está conectado com sucesso
+                rc (int): determina se o cliente está conectado com sucesso
         """
         if rc == 0:
             print("Connected to MQTT Broker!")
         else:
             print("Failed to connect, return code %d\n", rc)
             # Renova a assinatura caso a conexão tenha sido perdida
-            client.subscribe("$SYS/#")
+            client.subscribe(self.queue_update)
+            client.subscribe(self.car_entrance)
 
     def connect_mqtt(self):
         """
@@ -66,41 +52,60 @@ class PowerStation:
         """
         # Define id do cliente conectado
         client = mqtt_client.Client()
-        client.username_pw_set(self.username, self.password)
         client.on_connect = self.on_connect
-        client.connect(self.broker, self.port)
+        client.connect(self.broker_addr, self.broker_port)
         return client
 
-    def on_message(self, client, userdata, message):
+    def on_message(self, client: mqtt_client, userdata, message):
         """
-        Exibe as mensagens exibidas dos tópicos
+        Recebe e trata as mensagens dos tópicos
 
-            Argumentos:
-                client (): cliente MQTT
+            Parâmetros:
+                client (mqtt_client): cliente MQTT
                 userdata ():
                 message (str): mensagem recebida
         """
         print(f"Mensagem " + {message.payload.decode("utf-8")} + " recebido do tópico " + {message.topic})
-        
+
+        message_dict = json.load(message.payload)
+        # Atualiza as vagas do posto de carregamento
+        match message.topic:
+            case "REDESP2IG/station/traffic":
+                self.updateVagas(message_dict)
+
         return_message = self.messageTreatment(message.payload.decode("utf-8"))
 
     def subscribe(self, client: mqtt_client, topic):
         """
         Increve os cliente nos tópicos do broker
 
-            Argumentos:
-                client (): cliente MQTT
+            Parâmetros:
+                client (mqtt_client): cliente MQTT
                 topic (str): tópico do broker
         """
-        client.subscribe(topic)
+        client.subscribe(self.queue_update)
+        client.subscribe(self.car_entrance)
         client.on_message = self.on_message
 
-    def publish(self, client, topic, message):
+    def updateVagas(self, payload):
+        if payload.get("station") == self.client_id:
+            if payload.get("operation") == "entrance":
+                self.vagas_disp = max(0, self.vagas_disp - 1)
+            elif payload.get("operation") == "exit":
+                self.vagas_disp = min(self.limite_vagas, self.vagas_disp + 1)
+
+    def publishVagas(self, client: mqtt_client):
+        publication = "{\"station\": \"" + self.client_id + "\", \"queue\": \"" + str(self.vagas_disp) + "\"}"
+        publication = json.dumps(publication)
+
+        self.publish(client, self.queue_update, publication)
+        
+    def publish(self, client: mqtt_client, topic, message):
         """
         Publica mensagens nos tópicos do broker
 
-            Argumentos:
-                client (): cliente MQTT
+            Parâmetros:
+                client (mqtt_client): cliente MQTT
                 topic (str): tópico do broker
                 message (str): mensagem a ser publicada
         """
@@ -119,10 +124,10 @@ class PowerStation:
             pass
 
     def main(self):
-        client = self.connect_mqtt()
+        client_mqtt = self.connect_mqtt()
+        print(type(client_mqtt))
 
-        client.loop_forever()
-        self.publish(client, self.topic1, "oi")
+        client_mqtt.loop_forever()
 
 
 post_inst = PowerStation()
