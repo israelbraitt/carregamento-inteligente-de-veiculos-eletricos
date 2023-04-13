@@ -27,7 +27,7 @@ class Car:
         self.battery = 100
         self.mode = randint(1, 4) # 1 = economico, 2 = regular, 3 = sport, 4 = recarregando
         self.location = "Bairro 1"
-
+        self.str_format = 'utf-8'
         self.broker_addr = '127.0.0.1'
         self.broker_port = 1915
         self.car_battery_topic = "REDESP2IG/car/battery"
@@ -42,20 +42,20 @@ class Car:
         """
         Decrementa a bateria de acordo com o modo de uso do carro
         """
-
-        if self.mode > 3:
-            self.battery = min(100, self.battery + 5)
-        else:
-            self.battery = max(0, self.battery - self.mode)
-            if self.battery < 40:
-                p_id = "{\"car\": \"" + self.client_id + "\", "
-                p_location = "\"location\": \"" + self.location + "\", "
-                p_battery = "\"battery\": \"" + str(self.battery) + "\"}"
-                publication = p_id + p_location + p_battery
-                print("==ENVIANDO MENSAGEM==")
-                print(publication)
-                self.publish(client, self.car_battery_topic, publication)
-        sleep(2)
+        while True:
+            if self.mode > 3:
+                self.battery = min(100, self.battery + 5)
+            else:
+                self.battery = max(0, self.battery - self.mode)
+                if self.battery < 40:
+                    p_id = "{\"car\": \"" + self.client_id + "\", "
+                    p_location = "\"location\": \"" + self.location + "\", "
+                    p_battery = "\"battery\": \"" + str(self.battery) + "\"}"
+                    publication = p_id + p_location + p_battery
+                    print("==ENVIANDO MENSAGEM==")
+                    print(publication)
+                    self.publish(client, self.car_battery_topic, publication)
+            sleep(2)
 
     def on_connect(self, client: mqtt_client, userdata, flags, rc):
         """
@@ -92,7 +92,7 @@ class Car:
                 userdata ():
                 message (str): mensagem recebida
         """
-        print(f"Mensagem `{message.payload.decode()}` recebido do tópico `{message.topic}`")
+        print(f"Mensagem `{message.payload.decode(self.str_format)}` recebido do tópico `{message.topic}`")
 
     def subscribe(self, client: mqtt_client, topic):
         """
@@ -264,11 +264,11 @@ class Car:
         tcp_thread = threading.Thread(target=self.conexaoTCP, args=[socket_tcp])
         tcp_thread.start()
 
-
-
         client_mqtt = self.connect_mqtt()
-        client_mqtt.loop_start()
-        self.manageBattery(client_mqtt)
+
+        battery_thread = threading.Thread(target=self.manageBattery, args=[client_mqtt])
+        battery_thread.start()
+
         client_mqtt.loop_forever()
 
 carro_inst = Car()
