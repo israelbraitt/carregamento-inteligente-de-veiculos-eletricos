@@ -18,6 +18,7 @@ class PowerStation:
     """
 
     def __init__(self):
+        self.BROKERS = ['127.0.0.1'] * 10
         self.broker_addr = '127.0.0.1'
         self.broker_port = 1915
         self.queue_update = "REDESP2IG/station/queue"
@@ -25,8 +26,9 @@ class PowerStation:
         self.test_channel = "REDESP2IG/station/test"
         self.str_format = 'utf-8'
 
-        self.client_id = f'Station {randint(1, 100)}'
-        self.location = f'District {randint(1, 20)}'
+        self.station_code = randint(1, 100)
+        self.client_id = f'Station {self.station_code}'
+        self.location = randint(1, 10)
 
         self.limite_vagas = 25
         self.vagas_disp = 25
@@ -99,7 +101,10 @@ class PowerStation:
                 self.publishVagas(client)
 
     def publishVagas(self, client):
-        publication = "{\"station\": \"" + self.client_id + "\", \"queue\": \"" + str(self.vagas_disp) + "\"}"
+        pub_code = "{\"station\": \"" + str(self.station_code) + "\","
+        pub_location = "\"district\": \"" + str(self.location) + "\","
+        pub_queue = "\"queue\": \"" + str(self.vagas_disp) + "\"}"
+        publication = pub_code + pub_location + pub_queue
         self.publish(client, self.queue_update, publication)
 
     def publish(self, client, topic, message):
@@ -128,7 +133,7 @@ class PowerStation:
     def main(self):
         client = self.connect_mqtt()
 
-        self.publish(client, self.test_channel, "oi")
+        self.publishVagas(client)
         client.loop_forever()
 
 
