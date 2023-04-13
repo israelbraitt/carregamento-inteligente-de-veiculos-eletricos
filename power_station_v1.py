@@ -3,6 +3,7 @@ from random import randint
 from time import sleep
 import json
 
+
 class PowerStation:
     """
     Fornece funcionalidades de conexão e comunicação MQTT para divulgação
@@ -22,10 +23,13 @@ class PowerStation:
         self.queue_update = "REDESP2IG/station/queue"
         self.car_entrance = "REDESP2IG/station/traffic"
         self.test_channel = "REDESP2IG/station/test"
-        self.client_id = f'Station -{randint(0, 1000)}'
+
+        self.client_id = f'Station {randint(1, 100)}'
+        self.location = f'District {randint(1, 20)}'
 
         self.limite_vagas = 25
         self.vagas_disp = 25
+
 
     def on_connect(self, client, userdata, flags, rc):
         """
@@ -38,11 +42,12 @@ class PowerStation:
         """
         if rc == 0:
             print("Connected to MQTT Broker!")
+            client.subscribe(self.queue_update)
+            client.subscribe(self.car_entrance)
+            client.subscribe(self.test_channel)
         else:
             print("Failed to connect, return code %d\n", rc)
             # Renova a assinatura caso a conexão tenha sido perdida
-            client.subscribe(self.queue_update)
-            client.subscribe(self.car_entrance)
 
     def connect_mqtt(self):
         """
@@ -51,6 +56,7 @@ class PowerStation:
         # Define id do cliente conectado
         client = mqtt_client.Client()
         client.on_connect = self.on_connect
+        client.on_message = self.on_message
         client.connect(self.broker_addr, self.broker_port)
         return client
 
@@ -62,7 +68,7 @@ class PowerStation:
                 userdata ():
                 message (str): mensagem recebida
         """
-        print(f"Mensagem " + {message.payload.decode("utf-8")} + " recebido do tópico " + {message.topic})
+        print("Message received on topic "+message.topic+" with QoS "+str(message.qos)+" and payload "+str(message.payload))
 
         message_dict = json.load(message.payload)
         match message.topic:
@@ -93,7 +99,7 @@ class PowerStation:
     def publishVagas(self, client):
         publication = "{\"station\": \"" + self.client_id + "\", \"queue\": \"" + str(self.vagas_disp) + "\"}"
         self.publish(client, self.queue_update, publication)
-            
+
     def publish(self, client, topic, message):
         """
         Publica mensagens nos tópicos do broker
@@ -103,14 +109,15 @@ class PowerStation:
                 message (str): mensagem a ser publicada
         """
         while True:
-            sleep(1)
             result = client.publish(topic, message)
             # result: [0, 1]
             status = result[0]
             if status == 0:
                 print(f"Enviando `{message}` para o tópico `{topic}`")
+                break
             else:
                 print(f"Falha ao enviar mensagem para o tópico {topic}")
+                sleep(1)
 
     def messageTreatment(self, payload):
         if (payload == ""):
@@ -119,9 +126,8 @@ class PowerStation:
     def main(self):
         client = self.connect_mqtt()
 
-        client.loop_forever()
         self.publish(client, self.test_channel, "oi")
-
+        client.loop_forever()
 
 post_inst = PowerStation()
 post_inst.main()
