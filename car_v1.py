@@ -26,7 +26,7 @@ class Car:
     def __init__(self):
         self.battery = 100
         self.mode = randint(1, 3) # 1 = economico, 2 = regular, 3 = sport, 4 = recarregando
-        self.location = "Bairro 1"
+        self.location = randint(1, 20)
         self.str_format = 'utf-8'
         self.broker_addr = '127.0.0.1'
         self.broker_port = 1915
@@ -50,7 +50,7 @@ class Car:
                 self.battery = max(0, self.battery - self.mode * 2)
                 if self.battery < 40:
                     p_id = "{\"car\": \"" + self.client_id + "\", "
-                    p_location = "\"location\": \"" + self.location + "\", "
+                    p_location = "\"location\": \"" + str(self.location) + "\", "
                     p_battery = "\"battery\": \"" + str(self.battery) + "\"}"
                     publication = p_id + p_location + p_battery
                     print("==ENVIANDO MENSAGEM==")
@@ -70,6 +70,7 @@ class Car:
         if rc == 0:
             print("Connected to MQTT Broker!")
             client.subscribe(self.car_path_topic)
+            client.subscribe(self.car_battery_topic)
         else:
             print("Failed to connect, return code %d\n", rc)
             # Renova a assinatura caso a conexão tenha sido perdida
@@ -94,17 +95,6 @@ class Car:
                 message (str): mensagem recebida
         """
         print(f"Mensagem `{message.payload.decode(self.str_format)}` recebido do tópico `{message.topic}`")
-
-    def subscribe(self, client: mqtt_client, topic):
-        """
-        Increve os cliente nos tópicos do broker
-            Parâmetros:
-                client (mqtt_client): cliente MQTT
-                topic (str): tópico do broker
-        """
-        client.subscribe(self.car_battery_topic)
-        client.subscribe(self.car_path_topic)
-        client.on_message = self.on_message
 
     def publish(self, client: mqtt_client, topic, message):
         """
