@@ -1,68 +1,87 @@
-import logging
-import asyncio
-from hbmqtt.broker import Broker as mqtt_broker
 from paho.mqtt import client as mqtt_client
+import threading
+import socket
+import json
+from station import Station
 
 class CentralServer:
+    """
+    Servidor que processa as requisições dos servidores locais
+
+        Atributos:
+            cloud_host (str): endereço de conexão do socket TCP
+            cloud_port (int): porta de conexão do socket TCP
+            cloud_socket (socket): inicialização do socket TCP para comunicação com o servidor central
+
+            station_list (list): lista de postos de carregamento associados ao serviço
+
+            format (str): formato da codificação de caracteres
+    """
     def __init__(self):
+        """
+        Método construtor da classe
+        """
+        self.cloud_host = '127.0.0.1'
+        self.cloud_port = 1917
+        self.socket_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        self.station_list = []
 
-        self.logger = logging.getLogger(__name__)
+        self.format = 'utf-8'
 
-        config = {
-            'listeners': {
-                'default': {
-                    'type': 'tcp',
-                    'bind': 'localhost:4000'
-                }
-            },
-            'sys_interval': 10,
-            'topic-check': {
-                'enabled': False
-            }
-        }
+    def conexaoTCP(self):
+        """
+        Faz conexão com clientes TCP e executa uma thread para receber as mensagens
+            Parâmetros:
+                socket_tcp (socket): socket para conexão TCP
+        """
 
-        self.broker = mqtt_broker.Broker(config)
+        try:
+            # Fornece o endereço e as portas para "escutar" as conexões
+            # com os sockets dos clientes
+            self.socket_tcp.bind((self.tcp_host, self.tcp_port))
+            self.socket_tcp.listen()
+        except:
+            return print("Não foi possível iniciar o sistema de informações")
 
-        self.broker_addr = "broker.hivemq.com"
-        self.broker_port = 4000
+        while True:
+            # Aceita a conexão com os sockets dos clientes
+            conn_client_tcp, addr_client_tcp = self.socket_tcp.accept()
+            print("Conectado com um cliente TCP em: ", addr_client_tcp)
+            new_station = Station()
 
-        self.client = mqtt_client.Client()
+            # Recebe mensagens dos clientes através da conexão TCP
+            thread_tcp = threading.Thread(target=self.tratarRequests, args=[conn_client_tcp])
+            thread_tcp.start()
 
-        self.middle_broker_addr_port = []
-        self.middle_broker_topics = []
+    def recvMessage(self):
+        """
+        Recebe mensagens via TCP dos servidores locais
+        """
+        power_station_data = self.socket_tcp.recv(1024)
 
-    @asyncio.coroutine
-    def startBroker(self):
-        yield from self.broker.start()
-
-    def on_connect(self, client, userdata, flags, rc):
-        print("Conectado com " + str(client._client_id) + ": " + str(rc))
-
-    def on_message(self, client, userdata, message):
-        print("Mensagem recebida no tópico " + message.topic + " com QoS " + str(message.qos) + " and payload " + str(message.payload))
-        if int(message.payload) == 2:
-            print("2")
-            self.central_broker.publish(self.central_topic, message.payload)
+    def chooseBestStation(self, car_info):
+        """
+        Escolhe o melhor posto entre as opções disponíveis para o carro recarregar
+        
+            Argumentos:
+                car_info (): informações do carro (bateria e modo de autonomia)
+        """
+        best_queue = 25
+        best_station = None
+        
+        for station in self.station_list:
+            time_to_station = 0
+            if car_info["time left"] ==  time_to_station:
+                if station.queue < best_queue:
+                    best_station = station
+        
+        if best_station:
+            return best_station
+        else:
+            pass
 
     def main(self):
-        self.broker.on_message = self.on_message
-        self.broker.on_connect = self.on_connect
-        self.broker.connect(self.broker_addr, self.broker_port)
-        self.broker.loop_start()
-
-        for i in len(self.middle_broker_topics):
-            self.broker.subscribe(self.middle_broker_topics[i])
-            self.client.on_connect = self.on_connect
-            mb_addr_port = self.middle_broker_addr_port[i]
-            self.client.connect(mb_addr_port[0], mb_addr_port[1])
-            self.client.loop_start()
-            self.client.subscribe(self.middle_broker_topics)
-
-
-        if __name__ == "__main__":
-            formatter  = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-            logging.basicConfig(level=logging.INFO, format=formatter)
-            asyncio.get_event_loop().run_until_complete(self.startBroker())
-            asyncio.get_event_loop().run_forever()
-
-        print("INICIANDO BROKER LOCAL...")
+        # Cria um socket com conexão TCP
+        tcp_thread = threading.Thread(target=self.conexaoTCP, args=[])
+        tcp_thread.start()
