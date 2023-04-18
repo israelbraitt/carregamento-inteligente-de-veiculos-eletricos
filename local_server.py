@@ -57,9 +57,9 @@ class LocalServer:
                 path = self.getPath(decoded)
                 self.publishPath(client, path)
             case "REDESP2IG/station/queue":
-                print("chuck")
+                self.updateQueue(decoded)
             case "REDESP2IG/station/register":
-                print("sneed")
+                self.registerStation(decoded)
 
     def tcpStart(self):
         self.cloud_socket.connect((self.CLOUD_HOST, self.CLOUD_PORT))
