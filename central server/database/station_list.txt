@@ -1,0 +1,8 @@
+10;bairro_x;25
+12;bairro_x;25
+25;bairro_y;25
+45;bairro_y;25
+51;bairro_y;25
+67;bairro_z;25
+70;bairro_z;25
+80;bairro_z;25
