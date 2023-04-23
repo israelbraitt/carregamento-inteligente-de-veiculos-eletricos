@@ -5,39 +5,39 @@ import threading
 import socket
 import json
 
+
 class Car:
     """
     Fornece funcionalidades de conexão e comunicação MQTT para um carro elétrico
     encontrar postos de carregamento
-
         Atributos:
             battery (int): nível da bateria do carro
             mode (int): modo de uso do carro (1 -> economico, 2 -> regular, 3 -> sport, 4 -> recaregando)
             current_localization (str): localização atual do carro
-
             broker_addr (str): endereço do broker
             broker_port (int): porta de conexão do broker
             car_battery_topic (str): tópico MQTT para solicitar vaga em um posto
             car_path_topic (str): tópico MQTT para enviar a localização atual do carro
             client_id (str): id do cliente
-            
+
             tcp_host (str): endereço de acesso do sistema de informações do carro
             tcp_port (int): porta de acesso do socket TCP
     """
 
-    def __init__(self):
+    def __init__(self, location=randint(1, 2)):
         """
         Método construtor da classe
         """
         self.battery = 100
-        self.mode = 2 # 1 = economico, 2 = regular, 3 = sport, 4 = recarregando
-        self.location = randint(1, 20)
+        self.mode = 2  # 1 = economico, 2 = regular, 3 = sport, 4 = recarregando
+        self.location = location
+        self.best_station = ""
+        self.servers = ['127.0.0.1', '127.0.0.1']
+        self.SERVER_PORT = 1915
 
-        self.broker_addr = '127.0.0.1'
-        self.broker_port = 1915
-        self.car_battery_topic = "REDESP2IG/car/battery"
-        self.car_path_topic = "REDESP2IG/car/path"
-        self.test_channel = "REDESP2IG/car/test"
+        self.BATTERY_TOPIC = "REDESP2IG/car/battery"
+        self.PATH_TOPIC = "REDESP2IG/car/path"
+        self.TEST_TOPIC = "REDESP2IG/car/test"
         self.client_id = f'Carro {randint(0, 1000)}'
 
         self.tcp_host = '127.0.0.1'
@@ -48,7 +48,6 @@ class Car:
     def manageBattery(self, client: mqtt_client):
         """
         Gerencia a batera do carro
-
             client (mqtt_client): cliente MQTT
         """
         while True:
@@ -64,13 +63,12 @@ class Car:
                     publication = p_id + p_location + p_battery
                     print("==ENVIANDO MENSAGEM==")
                     print(publication)
-                    self.publish(client, self.car_battery_topic, publication)
+                    self.publish(client, self.BATTERY_TOPIC, publication)
             sleep(2)
 
     def on_connect(self, client: mqtt_client, userdata, flags, rc):
         """
         Retorna o status da conexão (callback) de acordo com a resposta do servidor
-
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 userdata (): dados definidos pelo usuário
@@ -79,8 +77,8 @@ class Car:
         """
         if rc == 0:
             print("Connected to MQTT Broker!")
-            client.subscribe(self.car_path_topic)
-            client.subscribe(self.car_battery_topic)
+            client.subscribe(self.PATH_TOPIC)
+            client.subscribe(self.BATTERY_TOPIC)
         else:
             print("Failed to connect, return code %d\n", rc)
             # Renova a assinatura caso a conexão tenha sido perdida
@@ -93,24 +91,27 @@ class Car:
         client = mqtt_client.Client()
         client.on_connect = self.on_connect
         client.on_message = self.on_message
-        client.connect(self.broker_addr, self.broker_port)
+        server_addr = self.servers[self.location-1]
+        client.connect(server_addr, self.SERVER_PORT)
         return client
 
     def on_message(self, client: mqtt_client, userdata, message):
         """
         Exibe as mensagens exibidas dos tópicos
-
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 userdata (): dados definidos pelo usuário
                 message (str): mensagem recebida
         """
         print(f"Mensagem `{message.payload.decode(self.format)}` recebido do tópico `{message.topic}`")
+        decoded = message.payload.decode(self.format)
+        match decoded:
+            case "REDESP2IG/car/path":
+                self.best_station = decoded
 
     def publish(self, client: mqtt_client, topic, message):
         """
         Publica mensagens nos tópicos do broker
-
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 topic (str): tópico do broker
@@ -130,7 +131,6 @@ class Car:
     def conexaoTCP(self, socket_tcp):
         """
         Faz conexão com clientes TCP e executa uma thread para receber as mensagens
-
             Parâmetros:
                 socket_tcp (socket): socket para conexão TCP
         """
@@ -155,7 +155,6 @@ class Car:
     def tratarRequests(self, client):
         """
         Faz o tratamento dos "requests" dos clientes
-
             Parâmetros:
                 client (socket): cliente conectado
         """
@@ -169,13 +168,13 @@ class Car:
                     # Retorna o nível de bateria do carro
                     if (data["url_content"] == "/nivel-bateria"):
                         response = self.assembleResponse("200", "OK",
-                        json.dumps("Nível da bateria: " + self.battery + "%"))
+                                                         json.dumps("Nível da bateria: " + self.battery + "%"))
                         self.sendTCPMessage(client, response)
 
                     # Retorna o nível de bateria do carro
                     elif (data["url_content"] == "/modo"):
                         response = self.assembleResponse("200", "OK",
-                        json.dumps("Modo de autonomia: " + self.mode + "%"))
+                                                         json.dumps("Modo de autonomia: " + self.mode + "%"))
                         self.sendTCPMessage(client, response)
 
                 elif (data["method"] == "POST"):
@@ -200,10 +199,8 @@ class Car:
     def getMessageData(self, mensagem):
         """
         Obtém os dados de uma "request"
-
             Parâmetros:
                 mensagem (str): mensagem recebida de um cliente ("request")
-
             Retornos:
                 um dicionário com o "method", o "url_content" e o "body_content" da "request"
         """
@@ -232,7 +229,6 @@ class Car:
     def sendTCPMessage(self, client, message):
         """
         Envia mensagens para o usuário do carro através da conexão TCP
-
             Parâmetros:
                 mensagem (str): mensagem a ser enviada ("response")
                 client (socket): cliente conectado
@@ -245,12 +241,10 @@ class Car:
     def assembleResponse(self, status_code, status_message, body):
         """
         Monta a "response" a ser enviada
-
             Parâmetros:
                 status_code (str): código de status da resposta HTTP do servidor
                 status_message (str): mensagem de status da resposta do servidor
                 body (str): corpo da mensagem de retorno
-
             Retornos:
                 response (str): resposta HTTP do servidor
         """
@@ -285,5 +279,6 @@ class Car:
 
         client_mqtt.loop_forever()
 
-carro_inst = Car()
+
+carro_inst = Car(1)
 carro_inst.main()
