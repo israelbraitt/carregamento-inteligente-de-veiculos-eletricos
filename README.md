@@ -3,7 +3,7 @@ O objetivo desse sistema é fonecer um serviço pela internet para orientar de f
 
 ### Autores
 
-[IsraelBraitt](https://github.com/israelbraitt)
+[Israel Braitt](https://github.com/israelbraitt)
 
 [Guilherme Nobre](https://github.com/Helmeppun)
 
