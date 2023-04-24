@@ -21,7 +21,7 @@ class PowerStation:
             format (str): formato da codificação de caracteres
     """
 
-    def __init__(self, location=randint(1, 10)):
+    def __init__(self, location=randint(1, 10), vagas_disp=25):
         """
         Método construtor da classe
         """
@@ -40,7 +40,7 @@ class PowerStation:
         self.location = location
 
         self.limite_vagas = 25
-        self.vagas_disp = 25
+        self.vagas_disp = vagas_disp
 
         self.format = 'utf-8'
 
@@ -153,5 +153,5 @@ class PowerStation:
         client.loop_forever()
 
 
-post_inst = PowerStation(1)
+post_inst = PowerStation(1, 20)
 post_inst.main()
