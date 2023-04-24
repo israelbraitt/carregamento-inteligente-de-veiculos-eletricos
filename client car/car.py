@@ -134,7 +134,6 @@ class Car:
             Parâmetros:
                 socket_tcp (socket): socket para conexão TCP
         """
-
         try:
             # Fornece o endereço e as portas para "escutar" as conexões
             # com os sockets dos clientes
@@ -267,13 +266,14 @@ class Car:
         return response
 
     def main(self):
-        # Cria um socket com conexão TCP
+        # Socket com conexão TCP
         socket_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcp_thread = threading.Thread(target=self.conexaoTCP, args=[socket_tcp])
         tcp_thread.start()
 
         client_mqtt = self.connect_mqtt()
-
+        
+        # Thread para gerenciar a bateria do carro
         battery_thread = threading.Thread(target=self.manageBattery, args=[client_mqtt])
         battery_thread.start()
 
