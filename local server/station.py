@@ -1,16 +1,15 @@
 class Station:
     """
     Guarda informações dos postos de carregamento nos servidores
-
         Atributos:
             location (str): localização do posto
             code (int): código do posto
             queue (int): tamanho da fila de carros do posto
     """
+
     def __init__(self, location, code, queue):
         """
         Método construtor da classe
-
             Argumentos:
                 location (str): localização do posto
                 code (int): código do posto
@@ -26,5 +25,8 @@ class Station:
         """
         json_code = "{\"code\": \"" + str(self.code) + "\", "
         json_location = "\"location\": \"" + str(self.location) + "\", "
-        json_queue = "\"queue\":" + str(self.queue) + "\"}"
+        json_queue = "\"queue\": \"" + str(self.queue) + "\"}"
         return json_code + json_location + json_queue
+
+    def distance(self, other_station):
+        return abs(self.location - other_station)
