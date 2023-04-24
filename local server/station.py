@@ -10,7 +10,8 @@ class Station:
     def __init__(self, location, code, queue):
         """
         Método construtor da classe
-            Argumentos:
+        
+            Parâmetros:
                 location (str): localização do posto
                 code (int): código do posto
                 queue (int): tamanho da fila de carros do posto
@@ -29,4 +30,10 @@ class Station:
         return json_code + json_location + json_queue
 
     def distance(self, other_station):
+        """
+        Retorna a distância entre esta estação e uma outra estação especificada
+        
+            Parâmetros:
+                other_station: outra estação que se deseja medir a distância
+        """
         return abs(self.location - other_station)
