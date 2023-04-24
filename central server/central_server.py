@@ -1,19 +1,17 @@
-from paho.mqtt import client as mqtt_client
 import threading
 import socket
 import json
 from station import Station
-import DAO
-
 
 class CentralServer:
     """
     Servidor que processa as requisições dos servidores locais
+
         Atributos:
             cloud_host (str): endereço de conexão do socket TCP
             cloud_port (int): porta de conexão do socket TCP
-            cloud_socket (socket): inicialização do socket TCP para comunicação com o servidor central
-            station_list (list): lista de postos de carregamento associados ao serviço
+            socket_tcp (socket): inicialização do socket TCP para comunicação com o servidor central
+            station_dict (dict): lista de postos de carregamento associados ao serviço
             format (str): formato da codificação de caracteres
     """
 
@@ -21,8 +19,9 @@ class CentralServer:
         """
         Método construtor da classe
         """
-        self.CLOUD_HOST = socket.gethostbyname(socket.gethostname())
-        self.CLOUD_PORT = 1917
+        self.cloud_host = socket.gethostbyname(socket.gethostname())
+        self.cloud_port = 1917
+
         self.socket_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.station_dict = {}
@@ -32,15 +31,15 @@ class CentralServer:
     def conexaoTCP(self):
         """
         Faz conexão com clientes TCP e executa uma thread para receber as mensagens
+
             Parâmetros:
                 socket_tcp (socket): socket para conexão TCP
         """
-
         try:
             # Fornece o endereço e as portas para "escutar" as conexões
             # com os sockets dos clientes
-            print(self.CLOUD_HOST)
-            self.socket_tcp.bind((self.CLOUD_HOST, self.CLOUD_PORT))
+            print(self.cloud_host)
+            self.socket_tcp.bind((self.cloud_host, self.cloud_port))
             self.socket_tcp.listen()
         except:
             return print("Não foi possível iniciar o sistema de informações")
@@ -55,6 +54,13 @@ class CentralServer:
             thread_tcp.start()
 
     def tratarServer(self, client, addr):
+        """
+        Trata mensagens recebidas pelo servidor
+
+            Parâmetros:
+                client (): cliente TCP
+                addr (str): endereço para envio da resposta
+        """
         connected = True
         print(f"\n===CONEXÃO COM {addr} ESTABELECIDA.===\n")
         try:
@@ -80,6 +86,12 @@ class CentralServer:
             print(e)
 
     def updateStation(self, station_info):
+        """
+        Atualiza informações de um posto de carregamento
+
+            Parâmetros:
+                station_info (dict): informações de um posto de carregamento
+        """
         print(self.station_dict)
 
         new_location = station_info.get("location")
@@ -96,10 +108,9 @@ class CentralServer:
         """
         Escolhe o melhor posto entre as opções disponíveis para o carro recarregar
 
-            Argumentos:
+            Parâmetros:
                 car_info (): informações do carro (bateria e modo de autonomia)
         """
-
         best_queue = 25
         best_station = None
 
@@ -115,7 +126,6 @@ class CentralServer:
             return best_station.getJson()
         else:
             return "{\"result\": \"posto não encontrado\"}"
-
 
     def main(self):
         # Cria um socket com conexão TCP
