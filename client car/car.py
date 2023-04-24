@@ -28,7 +28,7 @@ class Car:
         """
         Método construtor da classe
         """
-        self.battery = 100
+        self.battery = 50
         self.mode = 2  # 1 = economico, 2 = regular, 3 = sport, 4 = recarregando
         self.location = location
         self.best_station = ""
