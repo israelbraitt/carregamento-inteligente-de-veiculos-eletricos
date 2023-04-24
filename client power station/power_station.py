@@ -14,8 +14,8 @@ class PowerStation:
             central_addr (str): endereço do servidor central
             broker_port (int): porta de conexão do broker do servidor local
             central_port (int): porta de conexão do servidor central
-            REGISTER_TOPIC (str):
-            UPDATE_TOPIC (str):
+            REGISTER_TOPIC (str): tópico de registro da estação no servidor local
+            UPDATE_TOPIC (str): tópico para atualização das filas dos postos
             CAR_TOPIC (str):
             TEST_TOPIC (str):
             station_code (int): código do posto
