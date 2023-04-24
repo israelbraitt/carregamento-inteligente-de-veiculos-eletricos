@@ -72,7 +72,7 @@ Os tópicos presentes nos brokers dos servidores locais são os seguintes:
     tópico de registro da estação no servidor local
     
 - `"REDESP2IG/car/path"`
-    tópico para indicar a localização dos carros
+    tópico para indicar aonde um carro com bateria baixa deve abastecer
 
 ## 2.5 - Servidor central
 O servidor central (ver [central_server.py]) é responsável por calcular qual o melhor posto para um carro, quando os postos de carregamento de um determinada região não possuem mais vagas disponíveis, com isso o servidor local daquela região encaminha para ele informações do carro (localização e tempo restante da bateria).
