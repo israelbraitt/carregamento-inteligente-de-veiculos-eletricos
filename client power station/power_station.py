@@ -8,11 +8,16 @@ class PowerStation:
     """
     Fornece funcionalidades de conexão e comunicação MQTT para divulgação
     das vagas de um posto de carregamento de carros elétricos
+    
         Atributos:
-            broker_addr (str): endereço do broker
-            broker_port (int): porta de conexão do broker
-            queue_update (str): tópico para atualização da fila do posto
-            car_entrance (str): tópico para sinalizar entrada de um carro em um posto
+            broker_addr (str): endereço do broker servidor local
+            central_addr (str): endereço do servidor central
+            broker_port (int): porta de conexão do broker do servidor local
+            central_port (int): porta de conexão do servidor central
+            REGISTER_TOPIC (str):
+            UPDATE_TOPIC (str):
+            CAR_TOPIC (str):
+            TEST_TOPIC (str):
             station_code (int): código do posto
             client_id (str): id do cliente
             location (int): código da localização do posto
@@ -21,14 +26,14 @@ class PowerStation:
             format (str): formato da codificação de caracteres
     """
 
-    def __init__(self, location=randint(1, 10), vagas_disp=25):
+    def __init__(self, location = randint(1, 10), vagas_disp = 25):
         """
         Método construtor da classe
         """
-        self.BROKER_ADDR = '127.0.0.1'
-        self.CENTRAL_ADDR = '127.0.0.1'
-        self.BROKER_PORT = 1915
-        self.CENTRAL_PORT = 1917
+        self.broker_addr = '127.0.0.1'
+        self.central_addr = '127.0.0.1'
+        self.broker_port = 1915
+        self.central_port = 1917
 
         self.REGISTER_TOPIC = "REDESP2IG/station/register"
         self.UPDATE_TOPIC = "REDESP2IG/station/queue"
@@ -47,8 +52,11 @@ class PowerStation:
     def on_connect(self, client: mqtt_client, userdata, flags, rc):
         """
         Retorna o status da conexão (callback) de acordo com a resposta do servidor
-            Argumentos:
+        
+            Parâmetros:
                 client (mqtt_client): cliente MQTT
+                userdata: dados do usuário
+                flags: flags de resposta enviadas pelo broker
                 rc (int): determina se o cliente está conectado com sucesso
         """
         if rc == 0:
@@ -65,14 +73,16 @@ class PowerStation:
         client = mqtt_client.Client()
         client.on_connect = self.on_connect
         client.on_message = self.on_message
-        client.connect(self.BROKER_ADDR, self.BROKER_PORT)
+        client.connect(self.broker_addr, self.broker_port)
         return client
 
     def on_message(self, client: mqtt_client, userdata, message):
         """
         Exibe as mensagens exibidas dos tópicos
-            Argumentos:
+        
+            Parâmetros:
                 client (mqtt_client): cliente MQTT
+                userdata: dados do usuário
                 message (str): mensagem recebida
         """
         decoded = message.payload.decode(self.format)
@@ -90,20 +100,33 @@ class PowerStation:
         """
         Increve os cliente nos tópicos do broker
 
-            Argumentos:
+            Parâmetros:
                 client (mqtt_client): cliente MQTT
                 topic (str): tópico do broker
         """
         client.subscribe(topic)
         client.on_message = self.on_message
 
-    def register(self, client):
+    def register(self, client: mqtt_client):
+        """
+        Registra o posto no servidor local
+        
+            Parâmetros:
+                client (mtt_client): cliente MQTT
+        """
         pub_code = "{\"code\": \"" + str(self.station_code) + "\", "
         pub_queue = "\"queue\": \"" + str(self.limite_vagas - self.vagas_disp) + "\"}"
         publication = pub_code + pub_queue
         self.publish(client, self.REGISTER_TOPIC, publication)
 
-    def updateVagas(self, client, payload):
+    def updateVagas(self, client: mqtt_client, payload):
+        """
+        Atualiza a quantidade de vagas do posto
+        
+            Parâmetros:
+                client (mtt_client): cliente MQTT
+                payload (str): conteúdo da mensagem
+        """
         if payload.get("station") == self.client_id:
             if payload.get("operation") == "entrance":
                 self.vagas_disp = max(0, self.vagas_disp - 1)
@@ -115,7 +138,8 @@ class PowerStation:
     def publishVagas(self, client: mqtt_client):
         """
         Publica as vagas disponíveis no posto
-            Argumentos:
+        
+            Parâmetros:
                 client (mqtt_client): cliente MQTT
         """
         pub_code = "{\"station\": \"" + str(self.station_code) + "\","
@@ -127,7 +151,8 @@ class PowerStation:
     def publish(self, client: mqtt_client, topic, message):
         """
         Publica mensagens nos tópicos do broker
-            Argumentos:
+        
+            Parâmetros:
                 client (mqtt_client): cliente MQTT
                 topic (str): tópico do broker
                 message (str): mensagem a ser publicada
