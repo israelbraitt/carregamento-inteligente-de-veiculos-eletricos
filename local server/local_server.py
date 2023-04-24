@@ -6,38 +6,38 @@ import socket
 import json
 from station import Station
 
-
 class LocalServer:
     """
     Servidor que processa as requisições de carregamento dos carros e solicitações
     de vagas nos postos em determinada localidade
+
         Atributos:
             broker_addr (str): endereço do broker
-            broker_port (str): porta de conexão do broker
-            car_battery_topic (str): tópico para indicar o nível de bateria baixa dos carros
-            station_topic (str): tópico para atualização das filas dos postos
-            car_path_topic (str): tópico para indicar a localização dos carros
+            broker_port (int): porta de conexão do broker
             cloud_host (str): endereço de conexão do socket TCP do servidor central
             cloud_port (int): porta de conexão do socket TCP do servidor central
-            cloud_socket (socket): inicialização do socket TCP para comunicação com o servidor central
+            CAR_BATTERY_TOPIC (str): tópico para indicar o nível de bateria baixa dos carros
+            STATION_UPDATE_TOPIC (str): tópico para atualização das filas dos postos
+            STATION_REGISTER_TOPIC (str): tópico de registro da estação no servidor local
+            CAR_PATH_TOPIC (str): tópico para indicar a localização dos carros
             location (str): localização ao qual o servidor processa as requisições
-            station_list (list): lista de postos da localidade
+            cloud_socket (socket): inicialização do socket TCP para comunicação com o servidor central
+            station_dict (dict): lista de postos da localidade
             format (str): formato da codificação de caracteres
     """
 
     def __init__(self, location):
         """
         Método construtor da classe
-            Argumentos:
+
+            Parâmetros:
                 location (str): localização do posto
         """
-        self.BROKER_ADDR = "127.0.0.1"
-        self.BROKER_PORT = 1915
+        self.broker_addr = "127.0.0.1"
+        self.broker_port = 1915
 
-        self.CLOUD_HOST = "192.168.1.3"
-        self.CLOUD_PORT = 1917
-
-        self.FORMAT = 'utf-8'
+        self.cloud_host = "192.168.1.3"
+        self.cloud_port = 1917
 
         self.CAR_BATTERY_TOPIC = "REDESP2IG/car/battery"
         self.STATION_UPDATE_TOPIC = "REDESP2IG/station/queue"
@@ -48,10 +48,13 @@ class LocalServer:
         self.station_dict = {}
         self.cloud_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+        self.format = 'utf-8'
+
     def on_connect(self, client: mqtt_client, userdata, flags, rc):
         """
         Retorna o status da conexão (callback) de acordo com a resposta do servidor
-            Argumentos:
+
+            Parâmetros:
                 client (mqtt_client): cliente MQTT
                 userdata (): dados definidos pelo usuário
                 flags (): especifica o comportamento da conexão MQTT
@@ -68,11 +71,12 @@ class LocalServer:
     def on_message(self, client: mqtt_client, userdata, message):
         """
         Exibe as mensagens exibidas dos tópicos
-            Argumentos:
+
+            Parâmetros:
                 client (mqtt_client): cliente MQTT
                 message (str): mensagem recebida
         """
-        decoded = message.payload.decode(self.FORMAT)
+        decoded = message.payload.decode(self.format)
         print("Message received on topic " + message.topic + " with QoS " + str(message.qos) + " and payload " + str(
             decoded))
 
@@ -89,7 +93,7 @@ class LocalServer:
         """
         Inicializa o socket TCP
         """
-        self.cloud_socket.connect((self.CLOUD_HOST, self.CLOUD_PORT))
+        self.cloud_socket.connect((self.cloud_host, self.cloud_port))
         print("Connected to cloud.")
 
     def mqttStart(self):
@@ -99,10 +103,16 @@ class LocalServer:
         client = mqtt_client.Client()
         client.on_connect = self.on_connect
         client.on_message = self.on_message
-        client.connect(self.BROKER_ADDR, self.BROKER_PORT)
+        client.connect(self.broker_addr, self.broker_port)
         return client
 
     def updateQueue(self, station_info):
+        """
+        Atualiza a fila de um posto de carregamento
+
+            Parâmetros:
+                station_info (dict): informações de um posto de carregamento
+        """
         print(self.station_dict)
         station_info = json.loads(station_info)
         station_find = self.station_dict.get(station_info.get("code"))
@@ -112,6 +122,12 @@ class LocalServer:
         print(self.station_dict)
 
     def registerStation(self, station_info):
+        """
+        Registra o posto de carregamento no servidor central
+
+            Parâmetros:
+                station_info (dict): informações de um posto de carregamento
+        """
         print(self.station_dict)
         station_info = json.loads(station_info)
         new_station = Station(self.location, station_info.get("code"), station_info.get("queue"))
@@ -122,7 +138,8 @@ class LocalServer:
     def getPath(self, car_info):
         """
         Determina o melhor posto da localidade para o carro recarregar a bateria
-            Argumentos:
+
+            Parâmetros:
                 car_info (): informações do carro (bateria e modo de autonomia)
         """
         best_queue = 25
@@ -158,17 +175,26 @@ class LocalServer:
     def communeWithCloud(self, message):
         """
         Envia dados sobre a localização e o tempo de bateria restante para o servidor central
-            Argumentos:
+
+            Parâmetros:
                 message (str): mensagem a ser enviada para o servidor central
         """
-        self.cloud_socket.send(message.encode(self.FORMAT))
+        self.cloud_socket.send(message.encode(self.format))
         response = self.cloud_socket.recv(1024)
-        response = response.decode(self.FORMAT)
+        response = response.decode(self.format)
         response = str(response)
         print(response)
         return response
 
     def publish(self, client: mqtt_client, topic, message):
+        """
+        Publica mensagens nos tópicos do broker
+        
+            Parâmetros:
+                client (mqtt_client): cliente MQTT
+                topic (str): tópico do broker
+                message (str): mensagem a ser publicada
+        """
         while True:
             result = client.publish(topic, message)
             # result: [0, 1]
