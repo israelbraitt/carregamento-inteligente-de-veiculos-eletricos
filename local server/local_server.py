@@ -34,11 +34,10 @@ class LocalServer:
         self.BROKER_ADDR = "127.0.0.1"
         self.BROKER_PORT = 1915
 
-        self.CLOUD_HOST = "192.168.1.6"
+        self.CLOUD_HOST = "192.168.1.3"
         self.CLOUD_PORT = 1917
 
         self.FORMAT = 'utf-8'
-
 
         self.CAR_BATTERY_TOPIC = "REDESP2IG/car/battery"
         self.STATION_UPDATE_TOPIC = "REDESP2IG/station/queue"
@@ -137,9 +136,10 @@ class LocalServer:
             return best_station.getJson()
         else:
             car_info = json.loads(car_info)
+
             remaining_time = int(car_info.get("battery")) // max(1, int(car_info.get("mode")))
 
-            message_location = "{\"location\": \"" + str(self.location) + "\", "
+            message_location = "{\"location\": \"" + self.location + "\", "
             message_battery = "\"battery\": \"" + car_info.get("battery") + "\", "
             message_mode = "\"mode\": \"" + car_info.get("mode") + "\", "
             message_time = "\"time left\": \"" + str(remaining_time) + "\"}"
@@ -153,7 +153,7 @@ class LocalServer:
         if station_info:
             self.publish(client, self.CAR_PATH_TOPIC, station_info)
         else:
-            self.publish(client, self.CAR_PATH_TOPIC, "{\"resultado\": \"posto não encontrado\"}")
+            self.publish(client, self.CAR_PATH_TOPIC, "{\"result\": \"posto não encontrado\"}")
 
     def communeWithCloud(self, message):
         """
@@ -164,6 +164,7 @@ class LocalServer:
         self.cloud_socket.send(message.encode(self.FORMAT))
         response = self.cloud_socket.recv(1024)
         response = response.decode(self.FORMAT)
+        response = str(response)
         print(response)
         return response
 
@@ -180,6 +181,7 @@ class LocalServer:
                 sleep(1)
 
     def main(self):
+        self.tcpStart()
         broker = self.mqttStart()
         broker.loop_forever()
 
