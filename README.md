@@ -4,6 +4,7 @@ O objetivo desse sistema é fonecer um serviço pela internet para orientar de f
 ### Autores
 
 [IsraelBraitt](https://github.com/israelbraitt)
+
 [Guilherme Nobre](https://github.com/Helmeppun)
 
 ## 2 - Solução do problema
@@ -16,7 +17,7 @@ A comunicação entre os clientes e os servidores locais são através do protoc
 
 A imagem abaixo representa o diagrama do sistema:
 
-![Diagrama do sistema]()
+![Diagrama do sistema](https://github.com/israelbraitt/carregamento-inteligente-de-veiculos-eletricos/blob/main/resources/diagrama%20do%20sistema.png)
 
 ## 2.1 - O que é MQTT
 MQTT (Message Queuing Telemetry Transport) é um protocolo de comunicação máquina para máquina (M2M - Machine to Machine) comumente usado para IoT (Internet of Things), que funciona em cima do protocolo TCP/IP.
@@ -75,6 +76,8 @@ Os tópicos presentes nos brokers dos servidores locais são os seguintes:
 
 ## 2.5 - Servidor central
 O servidor central (ver [central_server.py]) é responsável por calcular qual o melhor posto para um carro, quando os postos de carregamento de um determinada região não possuem mais vagas disponíveis, com isso o servidor local daquela região encaminha para ele informações do carro (localização e tempo restante da bateria).
+
+O propósito do servidor central é gerenciar as solicitações dos servidores locais em situações em que essas solicitações não podem ser atendidas localmente.
 
 ## 3. Observações gerais
 Para utilizar esse sistema para comunicação com outras máquinas é recomendado que seja alterado o endereço de HOST dos servidors, sendo substituído pelo IP do computador que está executando o servidor. Caso seja necessário, altere também as portas de comunicação, para evitar quaisquer conflitos com portas que já estão sendo utilizadas por outras aplicações.
