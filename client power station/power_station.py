@@ -8,7 +8,7 @@ class PowerStation:
     """
     Fornece funcionalidades de conexão e comunicação MQTT para divulgação
     das vagas de um posto de carregamento de carros elétricos
-    
+
         Atributos:
             broker_addr (str): endereço do broker servidor local
             central_addr (str): endereço do servidor central
@@ -26,14 +26,12 @@ class PowerStation:
             format (str): formato da codificação de caracteres
     """
 
-    def __init__(self, location = randint(1, 10), vagas_disp = 25):
+    def __init__(self, BROKER_ADDR='127.0.0.1', vagas_disp=10):
         """
         Método construtor da classe
         """
-        self.broker_addr = '127.0.0.1'
-        self.central_addr = '127.0.0.1'
-        self.broker_port = 1915
-        self.central_port = 1917
+        self.BROKER_ADDR = BROKER_ADDR
+        self.BROKER_PORT = 1883
 
         self.REGISTER_TOPIC = "REDESP2IG/station/register"
         self.UPDATE_TOPIC = "REDESP2IG/station/queue"
@@ -42,9 +40,8 @@ class PowerStation:
 
         self.station_code = randint(1, 100)
         self.client_id = f'Station {self.station_code}'
-        self.location = location
 
-        self.limite_vagas = 25
+        self.limite_vagas = 10
         self.vagas_disp = vagas_disp
 
         self.format = 'utf-8'
@@ -52,7 +49,7 @@ class PowerStation:
     def on_connect(self, client: mqtt_client, userdata, flags, rc):
         """
         Retorna o status da conexão (callback) de acordo com a resposta do servidor
-        
+
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 userdata: dados do usuário
@@ -73,13 +70,13 @@ class PowerStation:
         client = mqtt_client.Client()
         client.on_connect = self.on_connect
         client.on_message = self.on_message
-        client.connect(self.broker_addr, self.broker_port)
+        client.connect(self.BROKER_ADDR, self.BROKER_PORT)
         return client
 
     def on_message(self, client: mqtt_client, userdata, message):
         """
         Exibe as mensagens exibidas dos tópicos
-        
+
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 userdata: dados do usuário
@@ -99,7 +96,6 @@ class PowerStation:
     def subscribe(self, client: mqtt_client, topic):
         """
         Increve os cliente nos tópicos do broker
-
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 topic (str): tópico do broker
@@ -110,7 +106,7 @@ class PowerStation:
     def register(self, client: mqtt_client):
         """
         Registra o posto no servidor local
-        
+
             Parâmetros:
                 client (mtt_client): cliente MQTT
         """
@@ -122,7 +118,7 @@ class PowerStation:
     def updateVagas(self, client: mqtt_client, payload):
         """
         Atualiza a quantidade de vagas do posto
-        
+
             Parâmetros:
                 client (mtt_client): cliente MQTT
                 payload (str): conteúdo da mensagem
@@ -138,20 +134,19 @@ class PowerStation:
     def publishVagas(self, client: mqtt_client):
         """
         Publica as vagas disponíveis no posto
-        
+
             Parâmetros:
                 client (mqtt_client): cliente MQTT
         """
         pub_code = "{\"station\": \"" + str(self.station_code) + "\","
-        pub_location = "\"district\": \"" + str(self.location) + "\","
         pub_queue = "\"queue\": \"" + str(self.limite_vagas - self.vagas_disp) + "\"}"
-        publication = pub_code + pub_location + pub_queue
+        publication = pub_code + pub_queue
         self.publish(client, self.UPDATE_TOPIC, publication)
 
     def publish(self, client: mqtt_client, topic, message):
         """
         Publica mensagens nos tópicos do broker
-        
+
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 topic (str): tópico do broker
@@ -177,6 +172,6 @@ class PowerStation:
         self.register(client)
         client.loop_forever()
 
-
-post_inst = PowerStation(1, 20)
+#
+post_inst = PowerStation("172.16.103.3", 10)
 post_inst.main()
