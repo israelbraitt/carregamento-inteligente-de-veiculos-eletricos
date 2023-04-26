@@ -6,11 +6,11 @@ import socket
 import json
 from station import Station
 
+
 class LocalServer:
     """
     Servidor que processa as requisições de carregamento dos carros e solicitações
     de vagas nos postos em determinada localidade
-
         Atributos:
             broker_addr (str): endereço do broker
             broker_port (int): porta de conexão do broker
@@ -29,14 +29,13 @@ class LocalServer:
     def __init__(self, location):
         """
         Método construtor da classe
-
             Parâmetros:
                 location (str): localização do posto
         """
-        self.broker_addr = "127.0.0.1"
-        self.broker_port = 1915
+        self.broker_addr = "172.16.103.3"
+        self.broker_port = 1883
 
-        self.cloud_host = "192.168.1.3"
+        self.cloud_host = "172.16.103.9" #"192.168.1.3"
         self.cloud_port = 1917
 
         self.CAR_BATTERY_TOPIC = "REDESP2IG/car/battery"
@@ -53,7 +52,6 @@ class LocalServer:
     def on_connect(self, client: mqtt_client, userdata, flags, rc):
         """
         Retorna o status da conexão (callback) de acordo com a resposta do servidor
-
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 userdata (): dados definidos pelo usuário
@@ -71,7 +69,6 @@ class LocalServer:
     def on_message(self, client: mqtt_client, userdata, message):
         """
         Exibe as mensagens exibidas dos tópicos
-
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 message (str): mensagem recebida
@@ -109,7 +106,6 @@ class LocalServer:
     def updateQueue(self, station_info):
         """
         Atualiza a fila de um posto de carregamento
-
             Parâmetros:
                 station_info (dict): informações de um posto de carregamento
         """
@@ -124,7 +120,6 @@ class LocalServer:
     def registerStation(self, station_info):
         """
         Registra o posto de carregamento no servidor central
-
             Parâmetros:
                 station_info (dict): informações de um posto de carregamento
         """
@@ -138,7 +133,6 @@ class LocalServer:
     def getPath(self, car_info):
         """
         Determina o melhor posto da localidade para o carro recarregar a bateria
-
             Parâmetros:
                 car_info (): informações do carro (bateria e modo de autonomia)
         """
@@ -175,7 +169,6 @@ class LocalServer:
     def communeWithCloud(self, message):
         """
         Envia dados sobre a localização e o tempo de bateria restante para o servidor central
-
             Parâmetros:
                 message (str): mensagem a ser enviada para o servidor central
         """
@@ -183,13 +176,14 @@ class LocalServer:
         response = self.cloud_socket.recv(1024)
         response = response.decode(self.format)
         response = str(response)
-        print(response)
-        return response
+        if response:
+            print(response)
+            return response
 
     def publish(self, client: mqtt_client, topic, message):
         """
         Publica mensagens nos tópicos do broker
-        
+
             Parâmetros:
                 client (mqtt_client): cliente MQTT
                 topic (str): tópico do broker
@@ -211,6 +205,5 @@ class LocalServer:
         broker = self.mqttStart()
         broker.loop_forever()
 
-
-server = LocalServer(1)
+server = LocalServer(3)
 server.main()
