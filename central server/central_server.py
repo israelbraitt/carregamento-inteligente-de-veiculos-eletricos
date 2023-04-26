@@ -6,7 +6,6 @@ from station import Station
 class CentralServer:
     """
     Servidor que processa as requisições dos servidores locais
-
         Atributos:
             cloud_host (str): endereço de conexão do socket TCP
             cloud_port (int): porta de conexão do socket TCP
@@ -19,7 +18,7 @@ class CentralServer:
         """
         Método construtor da classe
         """
-        self.cloud_host = socket.gethostbyname(socket.gethostname())
+        self.cloud_host = socket.gethostbyname(socket.gethostname())  # 172.16.103.9
         self.cloud_port = 1917
 
         self.socket_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -31,14 +30,14 @@ class CentralServer:
     def conexaoTCP(self):
         """
         Faz conexão com clientes TCP e executa uma thread para receber as mensagens
-
             Parâmetros:
                 socket_tcp (socket): socket para conexão TCP
         """
+
+        print(self.cloud_host)
         try:
             # Fornece o endereço e as portas para "escutar" as conexões
             # com os sockets dos clientes
-            print(self.cloud_host)
             self.socket_tcp.bind((self.cloud_host, self.cloud_port))
             self.socket_tcp.listen()
         except:
@@ -56,7 +55,6 @@ class CentralServer:
     def tratarServer(self, client, addr):
         """
         Trata mensagens recebidas pelo servidor
-
             Parâmetros:
                 client (): cliente TCP
                 addr (str): endereço para envio da resposta
@@ -67,19 +65,20 @@ class CentralServer:
             while connected:
                 msg = client.recv(1024).decode(self.format)
                 msg = str(msg)
-                msg = json.loads(msg)
-                print("===MENSAGEM RECEBIDA===")
-                print(msg)
-                response = None
+                if msg:
+                    msg = json.loads(msg)
+                    print("===MENSAGEM RECEBIDA===")
+                    print(msg)
+                    response = None
 
-                if msg.get("time_left"):
-                    response = self.chooseBestStation(msg)
-                elif msg.get("queue"):
-                    response = self.updateStation(msg)
+                    if msg.get("time_left"):
+                        response = self.chooseBestStation(msg)
+                    elif msg.get("queue"):
+                        response = self.updateStation(msg)
 
-                if response:
-                    print(f"\n===ENVIANDO RESPOSTA:=== \n{response}")
-                    client.send(response.encode(self.format))
+                    if response:
+                        print(f"\n===ENVIANDO RESPOSTA:=== \n{response}")
+                        client.send(response.encode(self.format))
 
         except Exception as e:
             print(f"\n===OCORREU UM ERRO NA COMUNICAÇÃO COM {addr}.===")
@@ -88,7 +87,6 @@ class CentralServer:
     def updateStation(self, station_info):
         """
         Atualiza informações de um posto de carregamento
-
             Parâmetros:
                 station_info (dict): informações de um posto de carregamento
         """
@@ -107,7 +105,6 @@ class CentralServer:
     def chooseBestStation(self, car_info):
         """
         Escolhe o melhor posto entre as opções disponíveis para o carro recarregar
-
             Parâmetros:
                 car_info (): informações do carro (bateria e modo de autonomia)
         """
@@ -129,6 +126,7 @@ class CentralServer:
 
     def main(self):
         # Cria um socket com conexão TCP
+        print("Começando servidor central...")
         self.conexaoTCP()
 
 central = CentralServer()
