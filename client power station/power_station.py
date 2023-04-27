@@ -41,7 +41,7 @@ class PowerStation:
         self.station_code = randint(1, 100)
         self.client_id = f'Station {self.station_code}'
 
-        self.limite_vagas = 10
+        self.limite_vagas = 25
         self.vagas_disp = vagas_disp
 
         self.format = 'utf-8'
@@ -123,7 +123,7 @@ class PowerStation:
                 client (mtt_client): cliente MQTT
                 payload (str): conteúdo da mensagem
         """
-        if payload.get("station") == self.client_id:
+        if int(payload.get("station")) == self.station_code:
             if payload.get("operation") == "entrance":
                 self.vagas_disp = max(0, self.vagas_disp - 1)
                 self.publishVagas(client)
@@ -172,6 +172,9 @@ class PowerStation:
         self.register(client)
         client.loop_forever()
 
-#
-post_inst = PowerStation("172.16.103.3", 10)
+
+addr = input("Insira o endereço do servidor: \n")
+v = input("Insira o número de vagas no posto: \n")
+v = int(v)
+post_inst = PowerStation(addr, v)
 post_inst.main()
