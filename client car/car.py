@@ -71,6 +71,32 @@ class Car:
                     self.publish(client, self.BATTERY_TOPIC, publication)
             sleep(2)
 
+    def setLocation(self, current_location):
+        """
+        Altera a localização atual do carro
+
+            Parâmetros:
+                current_location (str): localização atual do carro 
+        """
+        self.location = current_location
+
+        p_id = "{\"car\": \"" + self.client_id + "\", "
+        p_location = "\"location\": \"" + str(self.location) + "\", "
+        p_battery = "\"battery\": \"" + str(self.battery) + "\"}"
+        publication = p_id + p_location + p_battery
+        print("==ENVIANDO MENSAGEM==")
+        print(publication)
+        self.publish(client, self.BATTERY_TOPIC, publication)
+
+    def setMode(self, car_mode):
+        """
+        Altera o modo de autonomia do carro
+
+            Parâmetros:
+                car_mode (int):  modo de autonomia
+        """
+        self.mode = car_mode
+
     def on_connect(self, client: mqtt_client, userdata, flags, rc):
         """
         Retorna o status da conexão (callback) de acordo com a resposta do servidor
@@ -176,28 +202,28 @@ class Car:
                 if (data["method"] == "GET"):
                     # Retorna o nível de bateria do carro
                     if (data["url_content"] == "/nivel-bateria"):
-                        response = self.assembleResponse("200", "OK",
-                                                         json.dumps("Nível da bateria: " + self.battery + "%"))
+                        response = self.assembleResponse("200", "OK", json.dumps("Nível da bateria: " + self.battery + "%"))
                         self.sendTCPMessage(client, response)
+                        print("Nível da bateria do carro: " + self.battery)
 
-                    # Retorna o nível de bateria do carro
+                    # Retorna o modo de autonomia atual do carro
                     elif (data["url_content"] == "/modo"):
-                        response = self.assembleResponse("200", "OK",
-                                                         json.dumps("Modo de autonomia: " + self.mode + "%"))
+                        response = self.assembleResponse("200", "OK", json.dumps("Modo de autonomia: " + self.mode + "%"))
                         self.sendTCPMessage(client, response)
+                        print("Modo de autonomia do carro: " + self.mode)
 
                 elif (data["method"] == "POST"):
                     # Altera a localização atual do carro
                     if (data["url_content"] == "/enviar-localizacao"):
-                        current_localization = data["body_content"]["current_localization"]
-
-                        self.setLocalization(current_localization)
+                        current_location = data["body_content"]["current_location"]
+                        self.setLocation(current_location)
+                        print("Localização alterada para: " + self.location)
 
                     # Altera o modo de autonomia do carro
                     elif (data["url_content"] == "/alterar-modo-carro"):
                         car_mode = data["body_content"]["car_mode"]
-
-                        self.setModes(car_mode)
+                        self.setMode(car_mode)
+                        print("Modo alterado para: " + self.mode)
 
                 elif (data["method"] == "PUT"):
                     pass
