@@ -26,16 +26,16 @@ class LocalServer:
             format (str): formato da codificação de caracteres
     """
 
-    def __init__(self, location):
+    def __init__(self, location, broker_addr="172.16.103.3"):
         """
         Método construtor da classe
             Parâmetros:
                 location (str): localização do posto
         """
-        self.broker_addr = "172.16.103.3"
+        self.broker_addr = broker_addr
         self.broker_port = 1883
 
-        self.cloud_host = "172.16.103.9" #"192.168.1.3"
+        self.cloud_host = "172.16.103.9" #"192.168.1.3", 172.16.103.220, 172.16.103.9
         self.cloud_port = 1917
 
         self.CAR_BATTERY_TOPIC = "REDESP2IG/car/battery"
@@ -113,7 +113,7 @@ class LocalServer:
         station_info = json.loads(station_info)
         station_find = self.station_dict.get(station_info.get("code"))
         if station_find:
-            station_find.queue = station_info.get("queue")
+            station_find.queue = int(station_info.get("queue"))
         self.communeWithCloud(station_find.getJson())
         print(self.station_dict)
 
@@ -125,7 +125,7 @@ class LocalServer:
         """
         print(self.station_dict)
         station_info = json.loads(station_info)
-        new_station = Station(self.location, station_info.get("code"), station_info.get("queue"))
+        new_station = Station(self.location, station_info.get("code"), int(station_info.get("queue")))
         self.station_dict[station_info.get("code")] = new_station
         self.communeWithCloud(new_station.getJson())
         print(self.station_dict)
@@ -136,6 +136,7 @@ class LocalServer:
             Parâmetros:
                 car_info (): informações do carro (bateria e modo de autonomia)
         """
+        car_info = json.loads(car_info)
         best_queue = 25
         best_station = None
         for station in self.station_dict.values():
@@ -144,20 +145,23 @@ class LocalServer:
                 best_queue = int(station.queue)
         if best_station:
             print(best_station)
-            return best_station.getJson()
-        else:
-            car_info = json.loads(car_info)
+            response_car = "{\"car\": \"" + car_info.get("car") + "\", "
+            response_location = "\"location\": \"" + str(self.location) + "\", "
+            response_station_code = "\"code\": \"" + str(best_station.code) + "\", "
+            response_station_queue = "\"queue\": \"" + str(best_station.queue) + "\"}"
 
+            return response_car + response_location + response_station_code + response_station_queue
+        else:
             remaining_time = int(car_info.get("battery")) // max(1, int(car_info.get("mode")))
 
-            message_location = "{\"location\": \"" + self.location + "\", "
+            message_car = "{\"car\": \"" + car_info.get("car") + "\", "
+            message_location = "\"location\": \"" + str(self.location) + "\", "
             message_battery = "\"battery\": \"" + car_info.get("battery") + "\", "
             message_mode = "\"mode\": \"" + car_info.get("mode") + "\", "
             message_time = "\"time left\": \"" + str(remaining_time) + "\"}"
 
-            message = message_location + message_battery + message_mode + message_time
+            message = message_car + message_location + message_battery + message_mode + message_time
             response = self.communeWithCloud(message)
-            response = json.loads(response)
             return response
 
     def publishPath(self, client: mqtt_client, station_info):
@@ -205,5 +209,9 @@ class LocalServer:
         broker = self.mqttStart()
         broker.loop_forever()
 
-server = LocalServer(3)
+
+#addr = input("Insira o endereço do broker: ")
+#airro_num = input("Insira o numero do bairro: ")
+#bairro_num = int(bairro_num)
+server = LocalServer(2, "172.16.103.3")
 server.main()
