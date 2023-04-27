@@ -79,8 +79,15 @@ O servidor central (ver [central_server.py]) é responsável por calcular qual o
 
 O propósito do servidor central é gerenciar as solicitações dos servidores locais em situações em que essas solicitações não podem ser atendidas localmente.
 
-## 3. Observações gerais
+## 3 - Observações gerais
 Para utilizar esse sistema para comunicação com outras máquinas é recomendado que seja alterado o endereço de HOST dos servidors, sendo substituído pelo IP do computador que está executando o servidor. Caso seja necessário, altere também as portas de comunicação, para evitar quaisquer conflitos com portas que já estão sendo utilizadas por outras aplicações.
+
+## 4 - Repositórios no Docker Hub
+
+- [Servidor central](https://hub.docker.com/r/helmeppun/p2redescentralserver)
+- [Servidor local](https://hub.docker.com/r/helmeppun/p2redesserver2)
+- [Estação de carregamento](https://hub.docker.com/r/helmeppun/p2redesstation)
+- [Carro](https://hub.docker.com/r/helmeppun/p2redescar)
 
 ## Referências
 [MQTT - Getting Started](https://mqtt.org/getting-started/) - Tutoriais iniciais para o MQTT
@@ -96,5 +103,3 @@ Para utilizar esse sistema para comunicação com outras máquinas é recomendad
    [power_station.py]: <https://github.com/israelbraitt/carregamento-inteligente-de-veiculos-eletricos/blob/main/client%20power%20station/power_station.py>
    [local_server.py]: <https://github.com/israelbraitt/carregamento-inteligente-de-veiculos-eletricos/blob/main/local%20server/local_server.py>
    [central_server.py]: <https://github.com/israelbraitt/carregamento-inteligente-de-veiculos-eletricos/blob/main/central%20server/central_server.py>
-   
-   
