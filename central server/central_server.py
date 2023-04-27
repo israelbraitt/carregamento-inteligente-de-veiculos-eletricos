@@ -71,7 +71,7 @@ class CentralServer:
                     print(msg)
                     response = None
 
-                    if msg.get("time_left"):
+                    if msg.get("time left"):
                         response = self.chooseBestStation(msg)
                     elif msg.get("queue"):
                         response = self.updateStation(msg)
@@ -92,9 +92,9 @@ class CentralServer:
         """
         print(self.station_dict)
 
-        new_location = station_info.get("location")
+        new_location = int(station_info.get("location"))
         new_code = station_info.get("code")
-        new_queue = station_info.get("queue")
+        new_queue = int(station_info.get("queue"))
         new_station = Station(new_location, new_code, new_queue)
         self.station_dict[new_code] = new_station
         print(self.station_dict)
@@ -111,16 +111,30 @@ class CentralServer:
         best_queue = 25
         best_station = None
 
+        print("Calculando melhor posto...")
+        print(car_info.get("location"))
+
         for station in self.station_dict.values():
-            if station.location != car_info.get("location"):
+            print(station.location)
+            if station.location != int(car_info.get("location")):
                 current_distance = station.distance(int(car_info.get("location")))
-                current_time = current_distance * 10
-                if int(car_info.get("time_left")) > current_time:
+                current_time = current_distance * 5
+
+                print(current_distance)
+                print(current_time)
+
+                if int(car_info.get("time left")) > current_time:
                     if int(station.queue) < best_queue:
                         best_queue = station.queue
                         best_station = station
+
         if best_station:
-            return best_station.getJson()
+            response_car = "{\"car\": \"" + car_info.get("car") + "\", "
+            response_location = "\"location\": \"" + str(best_station.location) + "\", "
+            response_station_code = "\"code\": \"" + str(best_station.code) + "\", "
+            response_station_queue = "\"queue\": \"" + str(best_station.queue) + "\"}"
+            response = response_car + response_location + response_station_code + response_station_queue
+            return response
         else:
             return "{\"result\": \"posto não encontrado\"}"
 
