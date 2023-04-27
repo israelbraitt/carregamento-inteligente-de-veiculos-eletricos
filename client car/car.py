@@ -27,23 +27,24 @@ class Car:
             format (str): formato da codificação de caracteres
     """
 
-    def __init__(self, location=randint(1, 3)):
+    def __init__(self, location=randint(1, 2)):
         """
         Método construtor da classe
         """
         self.battery = 50
         self.mode = 2  # 1 = economico, 2 = regular, 3 = sport, 4 = recarregando
         self.location = location
-        self.best_station = ""
-        self.servers = {1: '172.16.103.1', 3: '172.16.103.3'}
+        self.station = 0
+        self.servers = {1: '172.16.103.1', 2: '172.16.103.3'}
         self.server_port = 1883
 
         self.BATTERY_TOPIC = "REDESP2IG/car/battery"
         self.PATH_TOPIC = "REDESP2IG/car/path"
+        self.UPDATE_TOPIC = "REDESP2IG/station/traffic"
         self.TEST_TOPIC = "REDESP2IG/car/test"
         self.client_id = f'Carro {randint(0, 1000)}'
 
-        self.tcp_host = '127.0.0.1'
+        self.tcp_host = socket.gethostbyname(socket.gethostname())
         self.tcp_port = 1159
 
         self.format = 'utf-8'
@@ -64,34 +65,47 @@ class Car:
                 if self.battery < 25:
                     p_id = "{\"car\": \"" + self.client_id + "\", "
                     p_location = "\"location\": \"" + str(self.location) + "\", "
+                    p_mode = "\"mode\": \"" + str(self.mode) + "\", "
                     p_battery = "\"battery\": \"" + str(self.battery) + "\"}"
-                    publication = p_id + p_location + p_battery
+                    publication = p_id + p_location + p_mode + p_battery
                     print("==ENVIANDO MENSAGEM==")
                     print(publication)
                     self.publish(client, self.BATTERY_TOPIC, publication)
             sleep(2)
 
-    def setLocation(self, current_location):
+    def setLocation(self, client, current_location, station=0):
         """
         Altera a localização atual do carro
-
             Parâmetros:
-                current_location (str): localização atual do carro 
+                current_location (str): localização atual do carro
         """
+
         self.location = current_location
+        self.station = station
+        p_operation = "\"operation\": \"none\", "
+
+        if station:
+            self.mode = 4
+            p_operation = "\"operation\": \"entrance\", "
+        else:
+            self.mode = 2
+            p_operation = "\"operation\": \"exit\", "
+
 
         p_id = "{\"car\": \"" + self.client_id + "\", "
         p_location = "\"location\": \"" + str(self.location) + "\", "
+        p_station = "\"station\": \"" + str(self.station) + "\", "
         p_battery = "\"battery\": \"" + str(self.battery) + "\"}"
-        publication = p_id + p_location + p_battery
+
+        publication = p_id + p_location + p_station + p_operation + p_battery
+
         print("==ENVIANDO MENSAGEM==")
         print(publication)
-        self.publish(client, self.BATTERY_TOPIC, publication)
+        self.publish(client, self.UPDATE_TOPIC, publication)
 
     def setMode(self, car_mode):
         """
         Altera o modo de autonomia do carro
-
             Parâmetros:
                 car_mode (int):  modo de autonomia
         """
@@ -122,8 +136,10 @@ class Car:
         client = mqtt_client.Client()
         client.on_connect = self.on_connect
         client.on_message = self.on_message
-        server_addr = self.servers[self.location]
-        if not server_addr: server_addr = self.servers[1]
+        if self.location > 2:
+            server_addr = self.servers.get(1)
+        else:
+            server_addr = self.servers.get(self.location)
         client.connect(server_addr, self.server_port)
         return client
 
@@ -140,7 +156,10 @@ class Car:
         decoded = message.payload.decode(self.format)
         match decoded:
             case "REDESP2IG/car/path":
-                self.best_station = decoded
+                if decoded.get("car"):
+                    if decoded.get("car") == self.client_id:
+                        print("Mensagem é pra este carro.")
+                        self.best_station = int(decoded.get("code"))
 
     def publish(self, client: mqtt_client, topic, message):
         """
@@ -189,7 +208,6 @@ class Car:
     def tratarRequests(self, client):
         """
         Faz o tratamento dos "requests" dos clientes
-
             Parâmetros:
                 client (socket): cliente conectado
         """
@@ -214,9 +232,12 @@ class Car:
 
                 elif (data["method"] == "POST"):
                     # Altera a localização atual do carro
-                    if (data["url_content"] == "/enviar-localizacao"):
+                    if (data["url_content"] == "/mudar-localizacao"):
+
                         current_location = data["body_content"]["current_location"]
-                        self.setLocation(current_location)
+                        current_station = data["body_content"]["current_station"]
+
+                        self.setLocation(client, current_location, current_station)
                         print("Localização alterada para: " + self.location)
 
                     # Altera o modo de autonomia do carro
