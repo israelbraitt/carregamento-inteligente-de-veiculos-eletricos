@@ -84,8 +84,8 @@ Para utilizar esse sistema para comunicação com outras máquinas é recomendad
 
 ## 4 - Repositórios no Docker Hub
 
-- [Servidor central](https://hub.docker.com/r/helmeppun/p2redescentralserver)
-- [Servidor local](https://hub.docker.com/r/helmeppun/p2redesserver2)
+- [Servidor central](https://hub.docker.com/r/helmeppun/p2redescentral)
+- [Servidor local](https://hub.docker.com/r/helmeppun/p2redesserver)
 - [Estação de carregamento](https://hub.docker.com/r/helmeppun/p2redesstation)
 - [Carro](https://hub.docker.com/r/helmeppun/p2redescar)
 
